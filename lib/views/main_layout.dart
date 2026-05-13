@@ -104,7 +104,7 @@ class MainLayout extends StatelessWidget {
     const ChronoView(),                          // 2: Chrono
     TodoView(),                                  // 3: Todo DB (Not const)
     const AudioEngineView(),                     // 4: Drawer 1
-    const LaunchpadView(),                       // 5: Drawer 2
+    LaunchpadView(),                       // 5: Drawer 2
     const MotivationView(),                      // 6: Drawer 3
     const DataOpsView(),                         // 7: Drawer 4
     const SettingsView(),                        // 8: Drawer 5

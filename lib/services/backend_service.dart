@@ -69,4 +69,21 @@ class BackendService {
     }
     return null;
   }
+
+  /*----------------------------------------------*\
+  |  OS Trigger Engine                             |
+  \*----------------------------------------------*/
+  Future<bool> launchSystemTool(String target) async {
+    try {
+      final url = await _baseUrl;
+      final response = await http.post(
+        Uri.parse('$url/api/launch'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'target': target}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false; // Graceful fail
+    }
+  }
 }

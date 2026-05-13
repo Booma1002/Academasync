@@ -1,18 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import '../services/backend_service.dart';
 /*----------------------------------------------*\
 |  <Sla7ef (2Z2H1G)>                             |
 |  Mission Control for external apps and tools.  |
 \*----------------------------------------------*/
 class LaunchpadView extends StatelessWidget {
-  const LaunchpadView({super.key});
+  LaunchpadView({super.key});
 
-  Future<void> _launch(String urlString) async {
-    final Uri url = Uri.parse(urlString);
-    if (!await launchUrl(url)) {
-      // In a real app, we might show a snackbar here
-      debugPrint('Could not launch $urlString');
+  final BackendService _backend = BackendService();
+
+  Future<void> _triggerBackendLaunch(BuildContext context, String target) async {
+    // Show a loading indicator
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Triggering $target on Host OS...'), duration: const Duration(seconds: 1)),
+    );
+
+    final success = await _backend.launchSystemTool(target);
+
+    if (!success && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Launch Failed. Check Network or Server Logs.', style: TextStyle(color: Colors.red))),
+      );
     }
   }
 
@@ -57,28 +66,28 @@ class LaunchpadView extends StatelessWidget {
                   subtitle: 'VS CODE',
                   icon: Icons.code,
                   color: primary,
-                  onTap: () => _launch('jade://'),
+                  onTap: () => _triggerBackendLaunch(context, 'code'),
                 ),
                 _LaunchButton(
                   title: 'ML RIZZ',
                   subtitle: 'LOCAL FOLDER',
                   icon: Icons.folder_open,
                   color: Colors.blueAccent,
-                  onTap: () => _launch('mlrizz://'),
+                  onTap: () => _triggerBackendLaunch(context, 'mlrizz'),
                 ),
                 _LaunchButton(
                   title: 'REC',
                   subtitle: 'OBS STUDIO',
                   icon: Icons.videocam,
                   color: Colors.redAccent,
-                  onTap: () => _launch('obs://'),
+                  onTap: () => _triggerBackendLaunch(context, 'obs'),
                 ),
                 _LaunchButton(
                   title: 'GEMINI',
                   subtitle: 'AI BRAIN',
                   icon: Icons.psychology,
                   color: const Color(0xFF8AB4F8),
-                  onTap: () => _launch('https://gemini.google.com/app'),
+                  onTap: () => launchUrl(Uri.parse('https://gemini.google.com/app')),
                 ),
               ],
             ),

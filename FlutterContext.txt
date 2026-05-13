@@ -47,6 +47,7 @@ dependencies:
   share_plus: ^10.1.4
   path_provider: ^2.1.5
   file_selector: ^0.9.4
+  device_info_plus: ^12.4.0
 
 dev_dependencies:
   flutter_test:
@@ -321,6 +322,78 @@ class TodoState extends Equatable {
 
   @override
   List<Object?> get props => [todos, isLoading];
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\cubits\analytics_cubit.dart
+-----------------------
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:equatable/equatable.dart';
+import '../services/backend_service.dart';
+
+class AnalyticsState extends Equatable {
+  final String status;
+  final String recommendation;
+  final bool isConnected;
+  final bool isLoading;
+
+  const AnalyticsState({
+    this.status = 'OFFLINE',
+    this.recommendation = 'Connect to Logic Engine for system state.',
+    this.isConnected = false,
+    this.isLoading = false,
+  });
+
+  AnalyticsState copyWith({
+    String? status,
+    String? recommendation,
+    bool? isConnected,
+    bool? isLoading,
+  }) {
+    return AnalyticsState(
+      status: status ?? this.status,
+      recommendation: recommendation ?? this.recommendation,
+      isConnected: isConnected ?? this.isConnected,
+      isLoading: isLoading ?? this.isLoading,
+    );
+  }
+
+  @override
+  List<Object?> get props => [status, recommendation, isConnected, isLoading];
+}
+
+class AnalyticsCubit extends Cubit<AnalyticsState> {
+  final BackendService _backend = BackendService();
+
+  AnalyticsCubit() : super(const AnalyticsState());
+
+  Future<void> analyzeCurrentPace({
+    required double delta,
+  }) async {
+    emit(state.copyWith(isLoading: true));
+    
+    final result = await _backend.analyzePace(delta: delta);
+
+    if (result != null) {
+      emit(state.copyWith(
+        status: result['status'] ?? 'ON PACE',
+        recommendation: result['recommendation'] ?? 'System stable.',
+        isConnected: true,
+        isLoading: false,
+      ));
+    } else {
+      emit(state.copyWith(
+        status: 'OFFLINE',
+        isConnected: false,
+        isLoading: false,
+      ));
+    }
+  }
+
+  Future<void> checkStatus() async {
+    final result = await _backend.getStatus();
+    emit(state.copyWith(isConnected: result != null));
+  }
 }
 
 
@@ -605,6 +678,82 @@ class Todo extends Equatable {
 
 FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\services\audio_service.dart
 -----------------------
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\services\backend_service.dart
+-----------------------
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:device_info_plus/device_info_plus.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  Stateless Logic Node Client                   |
+\*----------------------------------------------*/
+class BackendService {
+  String? _cachedBaseUrl;
+
+  /*----------------------------------------------*\
+  |  Dynamically resolves the IP based on hardware |
+  \*----------------------------------------------*/
+  Future<String> get _baseUrl async {
+    if (_cachedBaseUrl != null) return _cachedBaseUrl!;
+
+    if (Platform.isAndroid) {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      if (androidInfo.isPhysicalDevice) {
+        // Real Android Phone (LAN IP)
+        _cachedBaseUrl = 'http://172.26.39.112:3000';
+      } else {
+        // Android Emulator (Localhost Bridge)
+        _cachedBaseUrl = 'http://10.0.2.2:3000';
+      }
+    } else {
+      // Windows Desktop
+      _cachedBaseUrl = 'http://localhost:3000';
+    }
+
+    return _cachedBaseUrl!;
+  }
+
+  Future<Map<String, dynamic>?> getStatus() async {
+    try {
+      final url = await _baseUrl;
+      final response = await http.get(Uri.parse('$url/api/status'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      // Graceful fail for offline dev
+    }
+    return null;
+  }
+
+  /*----------------------------------------------*\
+  |  Strict Bounds Analysis Engine                 |
+  \*----------------------------------------------*/
+  Future<Map<String, dynamic>?> analyzePace({
+    required double delta,
+  }) async {
+    try {
+      final url = await _baseUrl;
+      final response = await http.post(
+        Uri.parse('$url/api/engine/analyze'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'delta': delta,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      // Graceful fail
+    }
+    return null;
+  }
+}
 
 
 FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\services\storage_service.dart
@@ -1052,29 +1201,28 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubits/roadmap_cubit.dart';
 import '../cubits/todo/todo_cubit.dart';
 import '../cubits/todo/todo_state.dart';
+import '../cubits/analytics_cubit.dart';
 import '../models/roadmap_model.dart';
 
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  The Main Command Center. Integrates with the  |
+|  Stateless Logic Engine for sync checks.       |
+\*----------------------------------------------*/
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    /*----------------------------------------------*\
-    |  We use a MultiBlocBuilder approach by         |
-    |  nesting them, so the dashboard updates if     |
-    |  EITHER your roadmap or your todos change.     |
-    \*----------------------------------------------*/
     return BlocBuilder<RoadmapCubit, RoadmapData>(
       builder: (context, roadmap) {
         return BlocBuilder<TodoCubit, TodoState>(
           builder: (context, todoState) {
-
-            /*----------------------------------------------*\
-            |  MATH ENGINE                                   |
-            \*----------------------------------------------*/
+            
+            // MATH ENGINE
             double delta = 0.0;
             double paceCar = 0.0;
-            int daysLeft = 0;
+            int activeTasks = todoState.todos.where((t) => !t.isDone).length;
 
             if (roadmap.startDate != null) {
               final start = DateTime.parse(roadmap.startDate!);
@@ -1085,22 +1233,14 @@ class DashboardView extends StatelessWidget {
               final dynamicRatio = 360 / totalCalendarDays;
 
               final daysPassed = now.difference(start).inDays >= 0 ? now.difference(start).inDays : 0;
-              daysLeft = target.difference(now).inDays >= 0 ? target.difference(now).inDays : 0;
-
               paceCar = daysPassed * dynamicRatio;
               delta = roadmap.burnedTokens.length - paceCar;
             }
 
-            /*----------------------------------------------*\
-            |  Determine Delta Color                         |
-            \*----------------------------------------------*/
             Color deltaColor = Colors.white;
             if (delta > 0.5) deltaColor = Theme.of(context).primaryColor;
             if (delta < -0.5) deltaColor = Colors.redAccent;
 
-            /*----------------------------------------------*\
-            |  UI PAINT                                      |
-            \*----------------------------------------------*/
             return SingleChildScrollView(
               padding: const EdgeInsets.all(20.0),
               child: Column(
@@ -1114,8 +1254,8 @@ class DashboardView extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.withOpacity(0.3)),
-                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                      color: Theme.of(context).cardColor.withValues(alpha: 0.05),
                     ),
                     child: Column(
                       children: [
@@ -1135,37 +1275,30 @@ class DashboardView extends StatelessWidget {
 
                   const SizedBox(height: 30),
 
-                  /*----------------------------------------------*\
-                  |  STATS ROW                                     |
-                  \*----------------------------------------------*/
+                  // STATS ROW
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _StatBox(title: 'TOKENS BURNED', value: '${roadmap.burnedTokens.length} / 360', color: Theme.of(context).primaryColor),
-                      _StatBox(title: 'PACE CAR', value: paceCar.toStringAsFixed(1), color: Colors.white),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _StatBox(title: 'DAYS LEFT', value: daysLeft.toString(), color: Colors.white),
-                      _StatBox(title: 'ACTIVE TASKS', value: todoState.todos.where((t) => !t.isDone).length.toString(), color: Colors.amber),
+                      _StatBox(title: 'BURNED', value: '${roadmap.burnedTokens.length}', color: Theme.of(context).primaryColor),
+                      _StatBox(title: 'PACE', value: paceCar.toStringAsFixed(1), color: Colors.white),
+                      _StatBox(title: 'TASKS', value: activeTasks.toString(), color: Colors.amber),
                     ],
                   ),
 
-                  // Replaced Spacer() with a fixed height so it scrolls perfectly
+                  const SizedBox(height: 30),
+
+                  /*----------------------------------------------*\
+                  |  STATELESS LOGIC ENGINE PANEL                  |
+                  \*----------------------------------------------*/
+                  _AnalyticsEnginePanel(currentDelta: delta),
+
                   const SizedBox(height: 40),
 
-                  /*----------------------------------------------*\
-                  |  MOTIVATION                                    |
-                  \*----------------------------------------------*/
                   const Text(
                     '"Don\'t count the days, make the days count."',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+                    style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey, fontSize: 12),
                   ),
-                  const SizedBox(height: 20),
                 ],
               ),
             );
@@ -1176,10 +1309,80 @@ class DashboardView extends StatelessWidget {
   }
 }
 
-/*----------------------------------------------*\
-|  <Sla7ef (2Z2H1G)>                             |
-|  A reusable widget for the 4 stats boxes       |
-\*----------------------------------------------*/
+class _AnalyticsEnginePanel extends StatelessWidget {
+  final double currentDelta;
+  const _AnalyticsEnginePanel({required this.currentDelta});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AnalyticsCubit, AnalyticsState>(
+      builder: (context, state) {
+        final primary = Theme.of(context).primaryColor;
+
+        return Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            border: Border.all(color: state.isConnected ? primary.withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.3)),
+            color: Colors.black.withValues(alpha: 0.2),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('LOGIC ENGINE ANALYTICS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                  Container(
+                    width: 8, height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: state.isConnected ? primary : Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 15),
+              if (state.isLoading)
+                const LinearProgressIndicator(minHeight: 2)
+              else ...[
+                Text(
+                  'SYSTEM STATE: ${state.status}',
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.bold,
+                    color: state.status == 'BEHIND PACE' ? Colors.red : (state.status == 'AHEAD OF PACE' ? primary : Colors.amber),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  state.recommendation,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+              const SizedBox(height: 15),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    context.read<AnalyticsCubit>().analyzeCurrentPace(
+                      delta: currentDelta,
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: state.isConnected ? primary : Colors.grey),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('ANALYZE PACE (SERVER)', style: TextStyle(fontFamily: 'monospace', fontSize: 10)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _StatBox extends StatelessWidget {
   final String title;
   final String value;
@@ -1191,17 +1394,17 @@ class _StatBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 5),
-        padding: const EdgeInsets.all(15),
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 15),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.2),
-          border: Border.all(color: Colors.grey.withOpacity(0.2)),
+          color: Colors.black.withValues(alpha: 0.2),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
         ),
         child: Column(
           children: [
-            Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color, fontFamily: 'monospace')),
+            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color, fontFamily: 'monospace')),
             const SizedBox(height: 5),
-            Text(title, style: const TextStyle(fontSize: 10, color: Colors.grey, letterSpacing: 1)),
+            Text(title, style: const TextStyle(fontSize: 8, color: Colors.grey, letterSpacing: 1)),
           ],
         ),
       ),
@@ -1213,19 +1416,19 @@ class _StatBox extends StatelessWidget {
 FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\views\data_ops_view.dart
 -----------------------
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:file_selector/file_selector.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/storage_service.dart';
 import '../cubits/roadmap_cubit.dart';
 import '../cubits/todo/todo_cubit.dart';
 
 /*----------------------------------------------*\
 |  <Sla7ef (2Z2H1G)>                             |
-|  FIXED: Switching to official file_selector    |
-|  to fix Windows Explorer crashes.              |
+|  The data maintenance panel for JADE || CORE.  |
+|  FIXED: Android-safe export using Share Sheet. |
 \*----------------------------------------------*/
 class DataOpsView extends StatelessWidget {
   const DataOpsView({super.key});
@@ -1235,24 +1438,22 @@ class DataOpsView extends StatelessWidget {
       final storage = StorageService();
       final jsonString = storage.exportFullState();
       
-      // Define location and name suggestions
-      const String fileName = 'jade_backup.json';
-      final FileSaveLocation? result = await getSaveLocation(
-        suggestedName: fileName,
-        acceptedTypeGroups: [
-          const XTypeGroup(label: 'JSON', extensions: ['json']),
-        ],
-      );
-
-      if (result == null) return; // User cancelled
-
-      // Manual write using dart:io for maximum stability
-      final File file = File(result.path);
+      // 1. Get the safe internal sandbox directory (Android/iOS safe)
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/jade_backup.json');
+      
+      // 2. Write the JSON to the sandbox
       await file.writeAsString(jsonString);
 
+      // 3. Trigger the native Share Sheet to extract it
       if (context.mounted) {
+        await Share.shareXFiles(
+          [XFile(file.path, mimeType: 'application/json')], 
+          text: 'JADE || CORE Backup JSON'
+        );
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('BACKUP SAVED TO DISK')),
+          const SnackBar(content: Text('BACKUP READY FOR EXPORT')),
         );
       }
     } catch (e) {
@@ -1274,7 +1475,6 @@ class DataOpsView extends StatelessWidget {
         final file = File(result.files.single.path!);
         final content = await file.readAsString();
         
-        // Flexible import call
         await StorageService().importFullState(content);
         
         if (context.mounted) {
@@ -1288,11 +1488,9 @@ class DataOpsView extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        // Show actual error details to help debug the JSON structure
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('RESTORE FAILED: $e')),
         );
-        debugPrint('Import Error: $e');
       }
     }
   }
@@ -1321,9 +1519,9 @@ class DataOpsView extends StatelessWidget {
           const SizedBox(height: 40),
 
           _OpsCard(
-            title: 'SAVE TO DISK',
-            description: 'Export all state to a backup file.',
-            icon: Icons.save_alt,
+            title: 'BACKUP DATA',
+            description: 'Save your progress via the system share sheet.',
+            icon: Icons.share,
             color: primary,
             onTap: () => _exportData(context),
           ),
@@ -2591,6 +2789,7 @@ import 'cubits/todo/todo_cubit.dart';
 import 'cubits/chrono/chrono_cubit.dart';
 import 'cubits/roadmap_cubit.dart';
 import 'cubits/audio_cubit.dart';
+import 'cubits/analytics_cubit.dart';
 import 'views/main_layout.dart';
 
 /*----------------------------------------------*\
@@ -2631,6 +2830,7 @@ class JadeCoreApp extends StatelessWidget {
         BlocProvider(create: (_) => ChronoCubit()),
         BlocProvider(create: (_) => RoadmapCubit(storage)),
         BlocProvider(create: (_) => AudioCubit()),
+        BlocProvider(create: (_) => AnalyticsCubit()),
       ],
       /*----------------------------------------------*\
       |  BlocBuilder listens to ThemeCubit to repaint  |
