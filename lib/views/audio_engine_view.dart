@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../cubits/audio_cubit.dart';
+import '../cubits/audio/audio_cubit.dart';
+import '../cubits/audio/audio_state.dart';
 
 /*----------------------------------------------*\
 |  <Sla7ef (2Z2H1G)>                             |

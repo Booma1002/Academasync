@@ -19,14 +19,20 @@ class BackendService {
     if (Platform.isAndroid) {
       final androidInfo = await DeviceInfoPlugin().androidInfo;
       if (androidInfo.isPhysicalDevice) {
-        // Real Android Phone (LAN IP)
+        /*----------------------------------------------*\
+        |  Real Android Phone (LAN IP)                   |
+        \*----------------------------------------------*/
         _cachedBaseUrl = 'http://172.26.39.112:3000';
       } else {
-        // Android Emulator (Localhost Bridge)
+        /*----------------------------------------------*\
+        |  Android Emulator (Localhost Bridge)           |
+        \*----------------------------------------------*/
         _cachedBaseUrl = 'http://10.0.2.2:3000';
       }
     } else {
-      // Windows Desktop
+      /*----------------------------------------------*\
+      |  Windows Desktop                               |
+      \*----------------------------------------------*/
       _cachedBaseUrl = 'http://localhost:3000';
     }
 
@@ -41,7 +47,7 @@ class BackendService {
         return jsonDecode(response.body);
       }
     } catch (e) {
-      // Graceful fail for offline dev
+      // Graceful fail for offline dev (:
     }
     return null;
   }
@@ -65,7 +71,7 @@ class BackendService {
         return jsonDecode(response.body);
       }
     } catch (e) {
-      // Graceful fail
+      // Graceful fail (:
     }
     return null;
   }
@@ -81,9 +87,8 @@ class BackendService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'target': target}),
       );
-      return response.statusCode == 200;
-    } catch (e) {
-      return false; // Graceful fail
+      return response.statusCode == 200;    } catch (e) {
+      return false; // Graceful fail (:
     }
   }
 }

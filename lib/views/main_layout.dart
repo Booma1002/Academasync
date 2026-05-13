@@ -20,7 +20,7 @@ import 'audio_engine_view.dart';
 |  internal body swaps out.                      |
 \*----------------------------------------------*/
 class MainLayout extends StatelessWidget {
-  MainLayout({super.key}); // Removed const so we can hold dynamic views
+  MainLayout({super.key});
 
   /*----------------------------------------------*\
   |  Map integer states (0-9) to actual screens.   |

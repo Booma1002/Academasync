@@ -5,9 +5,9 @@ import 'cubits/theme/theme_cubit.dart';
 import 'cubits/navigation/nav_cubit.dart';
 import 'cubits/todo/todo_cubit.dart';
 import 'cubits/chrono/chrono_cubit.dart';
-import 'cubits/roadmap_cubit.dart';
-import 'cubits/audio_cubit.dart';
-import 'cubits/analytics_cubit.dart';
+import 'cubits/roadmap/roadmap_cubit.dart';
+import 'cubits/audio/audio_cubit.dart';
+import 'cubits/analytics/analytics_cubit.dart';
 import 'views/main_layout.dart';
 
 /*----------------------------------------------*\

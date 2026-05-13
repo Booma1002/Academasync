@@ -1,47 +1,8 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
+import 'audio_state.dart';
 import 'dart:math';
-
-/*----------------------------------------------*\
-|  <Sla7ef (2Z2H1G)>                             |
-|  State class for the Audio Engine.             |
-\*----------------------------------------------*/
-class AudioState {
-  final bool isNoisePlaying;
-  final double noiseVolume;
-  final bool isMusicPlaying;
-  final double musicVolume;
-  final String? currentTrackName;
-  final List<PlatformFile> playlist;
-
-  const AudioState({
-    this.isNoisePlaying = false,
-    this.noiseVolume = 0.5,
-    this.isMusicPlaying = false,
-    this.musicVolume = 0.5,
-    this.currentTrackName,
-    this.playlist = const [],
-  });
-
-  AudioState copyWith({
-    bool? isNoisePlaying,
-    double? noiseVolume,
-    bool? isMusicPlaying,
-    double? musicVolume,
-    String? currentTrackName,
-    List<PlatformFile>? playlist,
-  }) {
-    return AudioState(
-      isNoisePlaying: isNoisePlaying ?? this.isNoisePlaying,
-      noiseVolume: noiseVolume ?? this.noiseVolume,
-      isMusicPlaying: isMusicPlaying ?? this.isMusicPlaying,
-      musicVolume: musicVolume ?? this.musicVolume,
-      currentTrackName: currentTrackName ?? this.currentTrackName,
-      playlist: playlist ?? this.playlist,
-    );
-  }
-}
 
 class AudioCubit extends Cubit<AudioState> {
   final AudioPlayer _noisePlayer = AudioPlayer();
@@ -86,8 +47,13 @@ class AudioCubit extends Cubit<AudioState> {
     emit(state.copyWith(noiseVolume: volume));
   }
 
+  void stopNoise() async {
+    await _noisePlayer.stop();
+    emit(state.copyWith(isNoisePlaying: false));
+  }
+
   /*----------------------------------------------*\
-  |  Music/Quran Controls                          |
+  |  mp3 Controls                                  |
   \*----------------------------------------------*/
   void loadPlaylist() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -134,6 +100,11 @@ class AudioCubit extends Cubit<AudioState> {
   void setMusicVolume(double volume) {
     _musicPlayer.setVolume(volume);
     emit(state.copyWith(musicVolume: volume));
+  }
+
+  void stopMusic() async {
+    await _musicPlayer.stop();
+    emit(state.copyWith(isMusicPlaying: false));
   }
 
   void nextTrack() {
