@@ -1,0 +1,2677 @@
+﻿--- FLUTTER ARCHITECTURE TELEMETRY ---
+
+--- BUILD CONFIGURATION (pubspec.yaml) ---
+name: team_app
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.5
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+  http: ^1.6.0
+  shared_preferences: ^2.5.5
+  flutter_bloc: ^9.1.1
+  audioplayers: ^6.6.0
+  equatable: ^2.0.7
+  file_picker: ^8.1.7
+  url_launcher: ^6.3.1
+  share_plus: ^10.1.4
+  path_provider: ^2.1.5
+  file_selector: ^0.9.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^6.0.0
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
+
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/to/resolution-aware-images
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/to/asset-from-package
+
+  # To add custom fonts to your application, add a fonts section here,
+  # in this "flutter" section. Each entry in this list should have a
+  # "family" key with the font family name, and a "fonts" key with a
+  # list giving the asset and other descriptors for the font. For
+  # example:
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic
+  #   - family: Trajan Pro
+  #     fonts:
+  #       - asset: fonts/TrajanPro.ttf
+  #       - asset: fonts/TrajanPro_Bold.ttf
+  #         weight: 700
+  #
+  # For details regarding fonts from package dependencies,
+  # see https://flutter.dev/to/font-from-package
+
+--- SOURCE CODE MANIFEST ---
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\cubits\chrono\chrono_cubit.dart
+-----------------------
+import 'dart:async';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'chrono_state.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  Engine for the countdown timer, handling      |
+|  ticks, pauses, and mode switches.             |
+\*----------------------------------------------*/
+class ChronoCubit extends Cubit<ChronoState> {
+  Timer? _timer;
+
+  ChronoCubit() : super(ChronoState(remainingSeconds: 25 * 60));
+
+  void startTimer() {
+    if (_timer != null && _timer!.isActive) return;
+
+    emit(state.copyWith(isRunning: true));
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (state.remainingSeconds > 0) {
+        emit(state.copyWith(remainingSeconds: state.remainingSeconds - 1));
+      } else {
+        timer.cancel();
+        emit(state.copyWith(isRunning: false));
+        /*----------------------------------------------*\
+        |  Note: We'll trigger the audio ring from the   |
+        |  UI listener when this hits 0                  |
+        \*----------------------------------------------*/
+      }
+    });
+  }
+
+  void pauseTimer() {
+    _timer?.cancel();
+    emit(state.copyWith(isRunning: false));
+  }
+
+  void resetTimer(int minutes, String mode) {
+    _timer?.cancel();
+    emit(ChronoState(remainingSeconds: minutes * 60, isRunning: false, mode: mode));
+  }
+
+  @override
+  Future<void> close() {
+    _timer?.cancel();
+    return super.close();
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\cubits\chrono\chrono_state.dart
+-----------------------
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  Represents the current time remaining and     |
+|  the active mode of the Pomodoro timer.        |
+\*----------------------------------------------*/
+class ChronoState {
+  final int remainingSeconds;
+  final bool isRunning;
+  final String mode;
+
+  ChronoState({required this.remainingSeconds, this.isRunning = false, this.mode = 'focus'});
+
+  ChronoState copyWith({int? remainingSeconds, bool? isRunning, String? mode}) {
+    return ChronoState(
+      remainingSeconds: remainingSeconds ?? this.remainingSeconds,
+      isRunning: isRunning ?? this.isRunning,
+      mode: mode ?? this.mode,
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\cubits\navigation\nav_cubit.dart
+-----------------------
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  Holds both the current index and optional     |
+|  data (like which month we are viewing).       |
+\*----------------------------------------------*/
+class NavState {
+  final int currentIndex;
+  final dynamic extraData;
+
+  const NavState({required this.currentIndex, this.extraData});
+}
+
+class NavCubit extends Cubit<NavState> {
+  /*----------------------------------------------*\
+  |  Starts at index 0 (Dashboard)                 |
+  \*----------------------------------------------*/
+  NavCubit() : super(const NavState(currentIndex: 0));
+
+  /*----------------------------------------------*\
+  |  Change pages and optionally pass data         |
+  \*----------------------------------------------*/
+  void changeView(int newIndex, {dynamic extraData}) {
+    emit(NavState(currentIndex: newIndex, extraData: extraData));
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\cubits\theme\theme_cubit.dart
+-----------------------
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../services/storage_service.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  Controls the app's visual theme (dark,        |
+|  light, cyber) and saves the preference.       |
+\*----------------------------------------------*/
+class ThemeCubit extends Cubit<String> {
+  final StorageService _storage;
+
+  ThemeCubit(this._storage) : super('dark') {
+    _loadTheme();
+  }
+
+  void _loadTheme() {
+    emit(_storage.loadTheme());
+  }
+
+  void cycleTheme() {
+    const themes = ['dark', 'light', 'cyber'];
+    final currentIndex = themes.indexOf(state);
+    final nextTheme = themes[(currentIndex + 1) % themes.length];
+
+    emit(nextTheme);
+    _storage.saveTheme(nextTheme);
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\cubits\todo\todo_cubit.dart
+-----------------------
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../models/todo_model.dart';
+import '../../services/storage_service.dart';
+import 'todo_state.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  Manages task logic (add, toggle, delete) and  |
+|  syncs it with local storage.                  |
+\*----------------------------------------------*/
+class TodoCubit extends Cubit<TodoState> {
+  final StorageService _storage;
+
+  TodoCubit(this._storage) : super(TodoState(todos: [], isLoading: true)) {
+    refresh();
+  }
+
+  void refresh() {
+    emit(state.copyWith(isLoading: true));
+    final loadedTodos = _storage.loadTodos();
+    emit(TodoState(todos: loadedTodos, isLoading: false));
+  }
+
+  void addTodo(String text) {
+    if (text.trim().isEmpty) return;
+
+    final newTodo = Todo(id: DateTime.now().millisecondsSinceEpoch.toString(), text: text);
+    final updatedList = List<Todo>.from(state.todos)..add(newTodo);
+
+    _updateAndSave(updatedList);
+  }
+
+  void toggleTodo(String id) {
+    final updatedList = state.todos.map((todo) {
+      if (todo.id == id) {
+        return todo.copyWith(isDone: !todo.isDone);
+      }
+      return todo;
+    }).toList();
+
+    _updateAndSave(updatedList);
+  }
+
+  void removeTodo(String id) {
+    final updatedList = state.todos.where((todo) => todo.id != id).toList();
+    _updateAndSave(updatedList);
+  }
+
+  void _updateAndSave(List<Todo> updatedList) {
+    emit(state.copyWith(todos: updatedList));
+    _storage.saveTodos(updatedList);
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\cubits\todo\todo_state.dart
+-----------------------
+import 'package:equatable/equatable.dart';
+import '../../models/todo_model.dart';
+
+class TodoState extends Equatable {
+  final List<Todo> todos;
+  final bool isLoading;
+
+  const TodoState({required this.todos, this.isLoading = false});
+
+  TodoState copyWith({List<Todo>? todos, bool? isLoading}) {
+    return TodoState(
+      todos: todos ?? this.todos,
+      isLoading: isLoading ?? this.isLoading,
+    );
+  }
+
+  @override
+  List<Object?> get props => [todos, isLoading];
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\cubits\audio_cubit.dart
+-----------------------
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:math';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  State class for the Audio Engine.             |
+\*----------------------------------------------*/
+class AudioState {
+  final bool isNoisePlaying;
+  final double noiseVolume;
+  final bool isMusicPlaying;
+  final double musicVolume;
+  final String? currentTrackName;
+  final List<PlatformFile> playlist;
+
+  const AudioState({
+    this.isNoisePlaying = false,
+    this.noiseVolume = 0.5,
+    this.isMusicPlaying = false,
+    this.musicVolume = 0.5,
+    this.currentTrackName,
+    this.playlist = const [],
+  });
+
+  AudioState copyWith({
+    bool? isNoisePlaying,
+    double? noiseVolume,
+    bool? isMusicPlaying,
+    double? musicVolume,
+    String? currentTrackName,
+    List<PlatformFile>? playlist,
+  }) {
+    return AudioState(
+      isNoisePlaying: isNoisePlaying ?? this.isNoisePlaying,
+      noiseVolume: noiseVolume ?? this.noiseVolume,
+      isMusicPlaying: isMusicPlaying ?? this.isMusicPlaying,
+      musicVolume: musicVolume ?? this.musicVolume,
+      currentTrackName: currentTrackName ?? this.currentTrackName,
+      playlist: playlist ?? this.playlist,
+    );
+  }
+}
+
+class AudioCubit extends Cubit<AudioState> {
+  final AudioPlayer _noisePlayer = AudioPlayer();
+  final AudioPlayer _musicPlayer = AudioPlayer();
+  
+  AudioCubit() : super(const AudioState()) {
+    /*----------------------------------------------*\
+    |  Setting up loops and volume listeners         |
+    \*----------------------------------------------*/
+    _noisePlayer.setReleaseMode(ReleaseMode.loop);
+    _musicPlayer.onPlayerComplete.listen((_) {
+      _playRandomFromPlaylist();
+    });
+  }
+
+  /*----------------------------------------------*\
+  |  Noise Controls (System Hum)                   |
+  \*----------------------------------------------*/
+  void toggleNoise() async {
+    if (state.isNoisePlaying) {
+      await _noisePlayer.stop();
+    } else {
+      /*----------------------------------------------*\
+      |  In the HTML version, this uses an oscillator  |
+      |  or a static white noise generator.            |
+      |  In Flutter, we play a local looping asset.    |
+      \*----------------------------------------------*/
+      try {
+        await _noisePlayer.setVolume(state.noiseVolume);
+        // Note: Requires 'assets/audio/system_hum.mp3' in pubspec.yaml
+        await _noisePlayer.play(AssetSource('audio/system_hum.mp3'));
+      } catch (e) {
+        // Fallback for missing asset during development
+        print('Hum Error: $e');
+      }
+    }
+    emit(state.copyWith(isNoisePlaying: !state.isNoisePlaying));
+  }
+
+  void setNoiseVolume(double volume) {
+    _noisePlayer.setVolume(volume);
+    emit(state.copyWith(noiseVolume: volume));
+  }
+
+  /*----------------------------------------------*\
+  |  Music/Quran Controls                          |
+  \*----------------------------------------------*/
+  void loadPlaylist() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.audio,
+      allowMultiple: true,
+    );
+
+    if (result != null) {
+      emit(state.copyWith(playlist: result.files));
+      _playRandomFromPlaylist();
+    }
+  }
+
+  void _playRandomFromPlaylist() async {
+    if (state.playlist.isEmpty) return;
+    
+    final random = Random();
+    final file = state.playlist[random.nextInt(state.playlist.length)];
+    
+    if (file.path != null) {
+      await _musicPlayer.play(DeviceFileSource(file.path!));
+      await _musicPlayer.setVolume(state.musicVolume);
+      emit(state.copyWith(
+        isMusicPlaying: true,
+        currentTrackName: file.name,
+      ));
+    }
+  }
+
+  void toggleMusic() async {
+    if (state.isMusicPlaying) {
+      await _musicPlayer.pause();
+    } else {
+      if (state.playlist.isNotEmpty) {
+        await _musicPlayer.resume();
+      } else {
+        loadPlaylist();
+        return;
+      }
+    }
+    emit(state.copyWith(isMusicPlaying: !state.isMusicPlaying));
+  }
+
+  void setMusicVolume(double volume) {
+    _musicPlayer.setVolume(volume);
+    emit(state.copyWith(musicVolume: volume));
+  }
+
+  void nextTrack() {
+    _playRandomFromPlaylist();
+  }
+
+  @override
+  Future<void> close() {
+    _noisePlayer.dispose();
+    _musicPlayer.dispose();
+    return super.close();
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\cubits\roadmap_cubit.dart
+-----------------------
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../models/roadmap_model.dart';
+import '../services/storage_service.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  Controls the 12-month grid logic and start    |
+|  date for Delta calculations.                  |
+\*----------------------------------------------*/
+class RoadmapCubit extends Cubit<RoadmapData> {
+  final StorageService _storage;
+
+  RoadmapCubit(this._storage) : super(RoadmapData()) {
+    refresh();
+  }
+
+  void refresh() {
+    emit(_storage.loadRoadmap());
+  }
+
+  void setStartDate(DateTime date) {
+    final updated = RoadmapData(startDate: date.toIso8601String(), burnedTokens: state.burnedTokens);
+    _storage.saveRoadmap(updated);
+    emit(updated);
+  }
+
+  void toggleToken(String tokenId) {
+    final tokens = List<String>.from(state.burnedTokens);
+    if (tokens.contains(tokenId)) {
+      tokens.remove(tokenId);
+    } else {
+      tokens.add(tokenId);
+    }
+    final updated = RoadmapData(startDate: state.startDate, burnedTokens: tokens);
+    _storage.saveRoadmap(updated);
+    emit(updated);
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\models\roadmap_model.dart
+-----------------------
+import 'package:equatable/equatable.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  Roadmap Progress Model.                       |
+\*----------------------------------------------*/
+class RoadmapData extends Equatable {
+  final String? startDate;
+  /*----------------------------------------------*\
+  |  Hold strings as 'm1-d1'                       |
+  \*----------------------------------------------*/
+  final List<String> burnedTokens;
+
+  const RoadmapData({this.startDate, this.burnedTokens = const []});
+
+  factory RoadmapData.fromJson(Map<String, dynamic> json) {
+    return RoadmapData(
+      startDate: json['startDate'],
+      burnedTokens: List<String>.from(json['burnedTokens'] ?? []),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'startDate': startDate,
+      'burnedTokens': burnedTokens,
+    };
+  }
+
+  @override
+  List<Object?> get props => [startDate, burnedTokens];
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\models\todo_model.dart
+-----------------------
+import 'package:equatable/equatable.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  Basic Todo Model with JSON support.           |
+\*----------------------------------------------*/
+class Todo extends Equatable {
+  final String id;
+  final String text;
+  final bool isDone;
+
+  const Todo({
+    required this.id,
+    required this.text,
+    this.isDone = false,
+  });
+
+  Todo copyWith({String? text, bool? isDone}) {
+    return Todo(
+      id: id,
+      text: text ?? this.text,
+      isDone: isDone ?? this.isDone,
+    );
+  }
+
+  factory Todo.fromJson(Map<String, dynamic> json) {
+    return Todo(
+      id: json['id'],
+      text: json['text'],
+      isDone: json['isDone'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'text': text,
+      'isDone': isDone,
+    };
+  }
+
+  @override
+  List<Object?> get props => [id, text, isDone];
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\services\audio_service.dart
+-----------------------
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\services\storage_service.dart
+-----------------------
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/todo_model.dart';
+import '../models/roadmap_model.dart';
+
+class StorageService {
+  static const String _todoKey = 'jade_todos';
+  static const String _roadmapKey = 'jade_roadmap';
+  static const String _themeKey = 'jade_theme';
+
+  static final StorageService _instance = StorageService._internal();
+  factory StorageService() => _instance;
+  StorageService._internal();
+
+  SharedPreferences? _prefs;
+
+  Future<void> init() async {
+    _prefs = await SharedPreferences.getInstance();
+  }
+
+  SharedPreferences get prefs {
+    if (_prefs == null) {
+      throw Exception('StorageService not initialized. Call init() in main.dart');
+    }
+    return _prefs!;
+  }
+
+  Future<void> saveTodos(List<Todo> todos) async {
+    final String jsonString = jsonEncode(todos.map((t) => t.toJson()).toList());
+    await prefs.setString(_todoKey, jsonString);
+  }
+
+  List<Todo> loadTodos() {
+    final String? jsonString = prefs.getString(_todoKey);
+    if (jsonString == null) return [];
+    try {
+      final List<dynamic> decodedList = jsonDecode(jsonString);
+      return decodedList.map((json) => Todo.fromJson(json)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<void> saveRoadmap(RoadmapData data) async {
+    await prefs.setString(_roadmapKey, jsonEncode(data.toJson()));
+  }
+
+  RoadmapData loadRoadmap() {
+    final String? jsonString = prefs.getString(_roadmapKey);
+    if (jsonString == null) return const RoadmapData();
+    try {
+      return RoadmapData.fromJson(jsonDecode(jsonString));
+    } catch (e) {
+      return const RoadmapData();
+    }
+  }
+
+  Future<void> saveTheme(String themeName) async {
+    await prefs.setString(_themeKey, themeName);
+  }
+
+  String loadTheme() {
+    return prefs.getString(_themeKey) ?? 'dark';
+  }
+
+  Future<void> wipeData() async {
+    await prefs.clear();
+  }
+
+  /*----------------------------------------------*\
+  |  EXPORT: Now returns a simple Map              |
+  \*----------------------------------------------*/
+  String exportFullState() {
+    final Map<String, dynamic> fullState = {
+      _todoKey: prefs.getString(_todoKey),
+      _roadmapKey: prefs.getString(_roadmapKey),
+      _themeKey: prefs.getString(_themeKey),
+    };
+    return jsonEncode(fullState);
+  }
+
+  /*----------------------------------------------*\
+  |  IMPORT: Flexible enough to handle raw roadmap |
+  |  JSON or full system backups.                  |
+  \*----------------------------------------------*/
+  Future<void> importFullState(String jsonString) async {
+    final dynamic decoded = jsonDecode(jsonString);
+
+    if (decoded is Map<String, dynamic>) {
+      /*----------------------------------------------*\
+      |  Case A: Full System Backup                    |
+      \*----------------------------------------------*/
+      if (decoded.containsKey(_roadmapKey) || decoded.containsKey(_todoKey)) {
+        if (decoded[_todoKey] != null) {
+          await prefs.setString(_todoKey, decoded[_todoKey].toString());
+        }
+        if (decoded[_roadmapKey] != null) {
+          await prefs.setString(_roadmapKey, decoded[_roadmapKey].toString());
+        }
+        if (decoded[_themeKey] != null) {
+          await prefs.setString(_themeKey, decoded[_themeKey].toString());
+        }
+      } 
+      /*----------------------------------------------*\
+      |  Case B: Raw Roadmap JSON (User's Example)     |
+      \*----------------------------------------------*/
+      else if (decoded.containsKey('startDate') || decoded.containsKey('burnedTokens')) {
+        await prefs.setString(_roadmapKey, jsonString);
+      }
+    }
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\views\audio_engine_view.dart
+-----------------------
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubits/audio_cubit.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  Controls for System Noise and MP3 Playback.   |
+|  FIXED: Added SingleChildScrollView to prevent |
+|  overflow on smaller screens.                  |
+\*----------------------------------------------*/
+class AudioEngineView extends StatelessWidget {
+  const AudioEngineView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AudioCubit, AudioState>(
+      builder: (context, state) {
+        final primary = Theme.of(context).primaryColor;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              /*----------------------------------------------*\
+              |  Header                                        |
+              \*----------------------------------------------*/
+              Text(
+                'AUDIO ENGINE || CORE',
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: primary,
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Container(height: 1, color: Colors.grey.withValues(alpha: 0.3)),
+              const SizedBox(height: 30),
+
+              /*----------------------------------------------*\
+              |  SYSTEM NOISE SECTION                          |
+              \*----------------------------------------------*/
+              _SectionHeader(title: 'SYSTEM NOISE', icon: Icons.waves),
+              const SizedBox(height: 15),
+              _AudioControlRow(
+                isActive: state.isNoisePlaying,
+                title: 'Background Hum',
+                volume: state.noiseVolume,
+                onToggle: () => context.read<AudioCubit>().toggleNoise(),
+                onVolumeChanged: (val) => context.read<AudioCubit>().setNoiseVolume(val),
+              ),
+
+              const SizedBox(height: 40),
+
+              /*----------------------------------------------*\
+              |  MP3 / QURAN SECTION                           |
+              \*----------------------------------------------*/
+              _SectionHeader(title: 'LOCAL PLAYER', icon: Icons.library_music),
+              const SizedBox(height: 15),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                  color: Theme.of(context).cardColor.withValues(alpha: 0.05),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      state.currentTrackName ?? 'NO TRACK LOADED',
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        color: state.isMusicPlaying ? primary : Colors.grey,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            state.isMusicPlaying ? Icons.pause_circle : Icons.play_circle,
+                            size: 48,
+                            color: primary,
+                          ),
+                          onPressed: () => context.read<AudioCubit>().toggleMusic(),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.skip_next, size: 32),
+                          onPressed: () => context.read<AudioCubit>().nextTrack(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Slider(
+                      value: state.musicVolume,
+                      activeColor: primary,
+                      inactiveColor: Colors.grey.withValues(alpha: 0.2),
+                      onChanged: (val) => context.read<AudioCubit>().setMusicVolume(val),
+                    ),
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.folder_open),
+                      label: const Text('LOAD FOLDER / MP3s', style: TextStyle(fontFamily: 'monospace')),
+                      onPressed: () => context.read<AudioCubit>().loadPlaylist(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: BorderSide(color: Colors.grey.withValues(alpha: 0.5)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              if (state.playlist.isNotEmpty) ...[
+                const SizedBox(height: 15),
+                Text(
+                  'Playlist: ${state.playlist.length} files detected',
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final IconData icon;
+
+  const _SectionHeader({required this.title, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.grey),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AudioControlRow extends StatelessWidget {
+  final bool isActive;
+  final String title;
+  final double volume;
+  final VoidCallback onToggle;
+  final ValueChanged<double> onVolumeChanged;
+
+  const _AudioControlRow({
+    required this.isActive,
+    required this.title,
+    required this.volume,
+    required this.onToggle,
+    required this.onVolumeChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+
+    return Row(
+      children: [
+        IconButton(
+          icon: Icon(
+            isActive ? Icons.volume_up : Icons.volume_off,
+            color: isActive ? primary : Colors.grey,
+          ),
+          onPressed: onToggle,
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 12)),
+              Slider(
+                value: volume,
+                activeColor: primary,
+                inactiveColor: Colors.grey.withValues(alpha: 0.2),
+                onChanged: onVolumeChanged,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\views\chrono_view.dart
+-----------------------
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubits/chrono/chrono_cubit.dart';
+import '../cubits/chrono/chrono_state.dart';
+
+class ChronoView extends StatelessWidget {
+  const ChronoView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      /*----------------------------------------------*\
+      |  Listens to the timer ticks                    |
+      \*----------------------------------------------*/
+      child: BlocBuilder<ChronoCubit, ChronoState>(
+        builder: (context, state) {
+          /*----------------------------------------------*\
+          |  Math to convert total seconds to MM:SS        |
+          |  format                                        |
+          \*----------------------------------------------*/
+          final minutes = (state.remainingSeconds / 60).floor().toString().padLeft(2, '0');
+          final seconds = (state.remainingSeconds % 60).toString().padLeft(2, '0');
+
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                  '${state.mode.toUpperCase()} MODE',
+                  style: const TextStyle(fontSize: 20, letterSpacing: 4, color: Colors.grey)
+              ),
+              const SizedBox(height: 20),
+
+              /*----------------------------------------------*\
+              |  MASSIVE TIMER TEXT                            |
+              \*----------------------------------------------*/
+              Text(
+                '$minutes:$seconds',
+                style: TextStyle(
+                  fontSize: 90,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                  /*----------------------------------------------*\
+                  |  Turns red if it hits 0                        |
+                  \*----------------------------------------------*/
+                  color: state.remainingSeconds == 0 ? Colors.redAccent : Theme.of(context).primaryColor,
+                ),
+              ),
+              const SizedBox(height: 50),
+
+              /*----------------------------------------------*\
+              |  CONTROLS                                      |
+              \*----------------------------------------------*/
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).primaryColor,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15)
+                    ),
+                    /*----------------------------------------------*\
+                    |  Disable button if already running             |
+                    \*----------------------------------------------*/
+                    onPressed: state.isRunning ? null : () => context.read<ChronoCubit>().startTimer(),
+                    child: const Text('START', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 20),
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.grey),
+                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15)
+                    ),
+                    /*----------------------------------------------*\
+                    |  Disable button if already paused              |
+                    \*----------------------------------------------*/
+                    onPressed: !state.isRunning ? null : () => context.read<ChronoCubit>().pauseTimer(),
+                    child: const Text('PAUSE', style: TextStyle(fontSize: 18)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 40),
+
+              /*----------------------------------------------*\
+              |  PRESETS                                       |
+              \*----------------------------------------------*/
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () => context.read<ChronoCubit>().resetTimer(25, 'focus'),
+                    child: const Text('25M FOCUS', style: TextStyle(color: Colors.grey)),
+                  ),
+                  const Text('|', style: TextStyle(color: Colors.grey)),
+                  TextButton(
+                    onPressed: () => context.read<ChronoCubit>().resetTimer(5, 'break'),
+                    child: const Text('5M BREAK', style: TextStyle(color: Colors.grey)),
+                  ),
+                ],
+              )
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\views\dashboard_view.dart
+-----------------------
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubits/roadmap_cubit.dart';
+import '../cubits/todo/todo_cubit.dart';
+import '../cubits/todo/todo_state.dart';
+import '../models/roadmap_model.dart';
+
+class DashboardView extends StatelessWidget {
+  const DashboardView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    /*----------------------------------------------*\
+    |  We use a MultiBlocBuilder approach by         |
+    |  nesting them, so the dashboard updates if     |
+    |  EITHER your roadmap or your todos change.     |
+    \*----------------------------------------------*/
+    return BlocBuilder<RoadmapCubit, RoadmapData>(
+      builder: (context, roadmap) {
+        return BlocBuilder<TodoCubit, TodoState>(
+          builder: (context, todoState) {
+
+            /*----------------------------------------------*\
+            |  MATH ENGINE                                   |
+            \*----------------------------------------------*/
+            double delta = 0.0;
+            double paceCar = 0.0;
+            int daysLeft = 0;
+
+            if (roadmap.startDate != null) {
+              final start = DateTime.parse(roadmap.startDate!);
+              final target = DateTime(2028, 1, 1);
+              final now = DateTime.now();
+
+              final totalCalendarDays = target.difference(start).inDays > 0 ? target.difference(start).inDays : 1;
+              final dynamicRatio = 360 / totalCalendarDays;
+
+              final daysPassed = now.difference(start).inDays >= 0 ? now.difference(start).inDays : 0;
+              daysLeft = target.difference(now).inDays >= 0 ? target.difference(now).inDays : 0;
+
+              paceCar = daysPassed * dynamicRatio;
+              delta = roadmap.burnedTokens.length - paceCar;
+            }
+
+            /*----------------------------------------------*\
+            |  Determine Delta Color                         |
+            \*----------------------------------------------*/
+            Color deltaColor = Colors.white;
+            if (delta > 0.5) deltaColor = Theme.of(context).primaryColor;
+            if (delta < -0.5) deltaColor = Colors.redAccent;
+
+            /*----------------------------------------------*\
+            |  UI PAINT                                      |
+            \*----------------------------------------------*/
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('JADE || CORE', style: TextStyle(fontSize: 24, letterSpacing: 2, color: Colors.grey)),
+                  const Divider(color: Colors.grey),
+                  const SizedBox(height: 20),
+
+                  // THE DELTA DISPLAY
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text('THE DELTA', style: TextStyle(fontSize: 18, letterSpacing: 4)),
+                        Text(
+                          roadmap.startDate == null ? 'SETUP REQ' : '${delta > 0 ? '+' : ''}${delta.toStringAsFixed(1)}',
+                          style: TextStyle(
+                              fontSize: roadmap.startDate == null ? 40 : 80,
+                              fontWeight: FontWeight.bold,
+                              color: deltaColor,
+                              fontFamily: 'monospace'
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  /*----------------------------------------------*\
+                  |  STATS ROW                                     |
+                  \*----------------------------------------------*/
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _StatBox(title: 'TOKENS BURNED', value: '${roadmap.burnedTokens.length} / 360', color: Theme.of(context).primaryColor),
+                      _StatBox(title: 'PACE CAR', value: paceCar.toStringAsFixed(1), color: Colors.white),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _StatBox(title: 'DAYS LEFT', value: daysLeft.toString(), color: Colors.white),
+                      _StatBox(title: 'ACTIVE TASKS', value: todoState.todos.where((t) => !t.isDone).length.toString(), color: Colors.amber),
+                    ],
+                  ),
+
+                  // Replaced Spacer() with a fixed height so it scrolls perfectly
+                  const SizedBox(height: 40),
+
+                  /*----------------------------------------------*\
+                  |  MOTIVATION                                    |
+                  \*----------------------------------------------*/
+                  const Text(
+                    '"Don\'t count the days, make the days count."',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  A reusable widget for the 4 stats boxes       |
+\*----------------------------------------------*/
+class _StatBox extends StatelessWidget {
+  final String title;
+  final String value;
+  final Color color;
+
+  const _StatBox({required this.title, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 5),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.2),
+          border: Border.all(color: Colors.grey.withOpacity(0.2)),
+        ),
+        child: Column(
+          children: [
+            Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color, fontFamily: 'monospace')),
+            const SizedBox(height: 5),
+            Text(title, style: const TextStyle(fontSize: 10, color: Colors.grey, letterSpacing: 1)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\views\data_ops_view.dart
+-----------------------
+import 'dart:io';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
+import '../services/storage_service.dart';
+import '../cubits/roadmap_cubit.dart';
+import '../cubits/todo/todo_cubit.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  FIXED: Switching to official file_selector    |
+|  to fix Windows Explorer crashes.              |
+\*----------------------------------------------*/
+class DataOpsView extends StatelessWidget {
+  const DataOpsView({super.key});
+
+  Future<void> _exportData(BuildContext context) async {
+    try {
+      final storage = StorageService();
+      final jsonString = storage.exportFullState();
+      
+      // Define location and name suggestions
+      const String fileName = 'jade_backup.json';
+      final FileSaveLocation? result = await getSaveLocation(
+        suggestedName: fileName,
+        acceptedTypeGroups: [
+          const XTypeGroup(label: 'JSON', extensions: ['json']),
+        ],
+      );
+
+      if (result == null) return; // User cancelled
+
+      // Manual write using dart:io for maximum stability
+      final File file = File(result.path);
+      await file.writeAsString(jsonString);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('BACKUP SAVED TO DISK')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('EXPORT ERROR: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _importData(BuildContext context) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        final content = await file.readAsString();
+        
+        // Flexible import call
+        await StorageService().importFullState(content);
+        
+        if (context.mounted) {
+          context.read<RoadmapCubit>().refresh();
+          context.read<TodoCubit>().refresh();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('SYSTEM RESTORED: DATA LOADED')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        // Show actual error details to help debug the JSON structure
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('RESTORE FAILED: $e')),
+        );
+        debugPrint('Import Error: $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'DATA OPERATIONS || OPS',
+            style: TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: primary,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Container(height: 1, color: Colors.grey.withValues(alpha: 0.3)),
+          const SizedBox(height: 40),
+
+          _OpsCard(
+            title: 'SAVE TO DISK',
+            description: 'Export all state to a backup file.',
+            icon: Icons.save_alt,
+            color: primary,
+            onTap: () => _exportData(context),
+          ),
+          const SizedBox(height: 20),
+
+          _OpsCard(
+            title: 'LOAD FROM DISK',
+            description: 'Restore progress from a backup file.',
+            icon: Icons.file_open,
+            color: Colors.blueAccent,
+            onTap: () => _importData(context),
+          ),
+          const SizedBox(height: 40),
+
+          const Text(
+            'DANGER ZONE',
+            style: TextStyle(color: Colors.redAccent, fontFamily: 'monospace', fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          _OpsCard(
+            title: 'WIPE ALL DATA',
+            description: 'PERMANENTLY purge the local database.',
+            icon: Icons.delete_forever,
+            color: Colors.redAccent,
+            onTap: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: const Color(0xFF111111),
+                  title: const Text('PURGE SYSTEM?'),
+                  content: const Text('All local tokens and tasks will be erased.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
+                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('PURGE', style: TextStyle(color: Colors.red))),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                await StorageService().wipeData();
+                if (context.mounted) {
+                   context.read<RoadmapCubit>().refresh();
+                   context.read<TodoCubit>().refresh();
+                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('SYSTEM PURGED')));
+                }
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OpsCard extends StatelessWidget {
+  final String title;
+  final String description;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _OpsCard({
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: color.withValues(alpha: 0.5)),
+          color: color.withValues(alpha: 0.05),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(fontSize: 11, color: Colors.grey.withValues(alpha: 0.8)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\views\launchpad_view.dart
+-----------------------
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  Mission Control for external apps and tools.  |
+\*----------------------------------------------*/
+class LaunchpadView extends StatelessWidget {
+  const LaunchpadView({super.key});
+
+  Future<void> _launch(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url)) {
+      // In a real app, we might show a snackbar here
+      debugPrint('Could not launch $urlString');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /*----------------------------------------------*\
+          |  Header                                        |
+          \*----------------------------------------------*/
+          Text(
+            'SYSTEM LAUNCHPAD || TOOLS',
+            style: TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: primary,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Container(height: 1, color: Colors.grey.withValues(alpha: 0.3)),
+          const SizedBox(height: 30),
+
+          /*----------------------------------------------*\
+          |  Launcher Grid                                 |
+          \*----------------------------------------------*/
+          Expanded(
+            child: GridView.count(
+              crossAxisCount: 2,
+              crossAxisSpacing: 20,
+              mainAxisSpacing: 20,
+              childAspectRatio: 1.3,
+              children: [
+                _LaunchButton(
+                  title: 'CODE BASE',
+                  subtitle: 'VS CODE',
+                  icon: Icons.code,
+                  color: primary,
+                  onTap: () => _launch('jade://'),
+                ),
+                _LaunchButton(
+                  title: 'ML RIZZ',
+                  subtitle: 'LOCAL FOLDER',
+                  icon: Icons.folder_open,
+                  color: Colors.blueAccent,
+                  onTap: () => _launch('mlrizz://'),
+                ),
+                _LaunchButton(
+                  title: 'REC',
+                  subtitle: 'OBS STUDIO',
+                  icon: Icons.videocam,
+                  color: Colors.redAccent,
+                  onTap: () => _launch('obs://'),
+                ),
+                _LaunchButton(
+                  title: 'GEMINI',
+                  subtitle: 'AI BRAIN',
+                  icon: Icons.psychology,
+                  color: const Color(0xFF8AB4F8),
+                  onTap: () => _launch('https://gemini.google.com/app'),
+                ),
+              ],
+            ),
+          ),
+
+          /*----------------------------------------------*\
+          |  Footer Note                                   |
+          \*----------------------------------------------*/
+          Center(
+            child: Text(
+              'External apps require URI protocol registration.',
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 10,
+                color: Colors.grey.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LaunchButton extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _LaunchButton({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
+          color: color.withValues(alpha: 0.05),
+        ),
+        padding: const EdgeInsets.all(15),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 10,
+                color: Colors.grey.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\views\main_layout.dart
+-----------------------
+// import 'package:flutter/material.dart';
+// import 'package:flutter_bloc/flutter_bloc.dart';
+// import '../cubits/navigation/nav_cubit.dart';
+// import '../widgets/core_bottom_nav.dart';
+// import '../widgets/core_drawer.dart';
+// import 'dashboard_view.dart';
+// import 'roadmap_view.dart';
+// import 'chrono_view.dart';
+// import 'todo_view.dart';
+// import 'audio_engine_view.dart';
+import 'motivation_view.dart';
+import 'launchpad_view.dart';
+import 'data_ops_view.dart';
+// import 'launchpad_view.dart';
+// import 'motivation_view.dart';
+// import 'data_ops_view.dart';
+// import 'settings_view.dart';
+// import 'month_detail_view.dart';
+//
+// /*----------------------------------------------*\
+// |  <Sla7ef (2Z2H1G)>                             |
+// |  The skeleton frame that persists while the    |
+// |  internal body swaps out.                      |
+// \*----------------------------------------------*/
+// class MainLayout extends StatelessWidget {
+//   const MainLayout({super.key});
+//
+//   /*----------------------------------------------*\
+//   |  Map integer states (0-9) to actual screen     |
+//   |  widgets.                                      |
+//   \*----------------------------------------------*/
+//   final List<Widget> _views = const [
+//     Center(child: Text('Dashboard View')), // 0
+//     Center(child: Text('Roadmap View')),   // 1
+//     Center(child: Text('Chrono View')),    // 2
+//     Center(child: Text('Todo View')),      // 3
+//     Center(child: Text('Audio Engine')),   // 4
+//     Center(child: Text('Launchpad')),      // 5
+//     Center(child: Text('Motivation')),     // 6
+//     Center(child: Text('Data Ops')),       // 7
+//     Center(child: Text('Settings')),       // 8
+//     Center(child: Text('Month Detail')),   // 9
+//   ];
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text('JADE || CORE', style: TextStyle(letterSpacing: 2)),
+//         elevation: 0,
+//         /*----------------------------------------------*\
+//         |  Looks cleaner with dark/cyber themes.         |
+//         \*----------------------------------------------*/
+//         backgroundColor: Colors.transparent,
+//       ),
+//       /*----------------------------------------------*\
+//       |  Rebuilds ONLY the body when the NavCubit      |
+//       |  emits a new integer.                          |
+//       \*----------------------------------------------*/
+//       drawer: const CoreDrawer(),
+//       body: BlocBuilder<NavCubit, int>(
+//         builder: (context, currentIndex) {
+//           return _views[currentIndex];
+//         },
+//       ),
+//       bottomNavigationBar: const CoreBottomNav(),
+//     );
+//   }
+// }
+
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubits/navigation/nav_cubit.dart';
+import '../widgets/core_bottom_nav.dart';
+import '../widgets/core_drawer.dart';
+
+// The actual UI engines we have built
+import 'dashboard_view.dart';
+import 'chrono_view.dart';
+import 'todo_view.dart';
+import 'settings_view.dart';
+import 'roadmap_view.dart';
+import 'month_detail_view.dart';
+import 'audio_engine_view.dart';
+import 'motivation_view.dart';
+import 'launchpad_view.dart';
+import 'data_ops_view.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  The skeleton frame that persists while the    |
+|  internal body swaps out.                      |
+\*----------------------------------------------*/
+class MainLayout extends StatelessWidget {
+  MainLayout({super.key}); // Removed const so we can hold dynamic views
+
+  /*----------------------------------------------*\
+  |  Map integer states (0-9) to actual screens.   |
+  |  The list itself is NOT const anymore!         |
+  \*----------------------------------------------*/
+  final List<Widget> _views = [
+    const DashboardView(),                       // 0: Core
+    const RoadmapView(),                         // 1: Roadmap
+    const ChronoView(),                          // 2: Chrono
+    TodoView(),                                  // 3: Todo DB (Not const)
+    const AudioEngineView(),                     // 4: Drawer 1
+    const LaunchpadView(),                       // 5: Drawer 2
+    const MotivationView(),                      // 6: Drawer 3
+    const DataOpsView(),                         // 7: Drawer 4
+    const SettingsView(),                        // 8: Drawer 5
+    const MonthDetailView(),                     // 9: Hidden push route
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('JADE || CORE', style: TextStyle(letterSpacing: 2)),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.home_outlined),
+            onPressed: () => context.read<NavCubit>().changeView(0),
+            tooltip: 'Dashboard',
+          ),
+        ],
+      ),
+      drawer: const CoreDrawer(),
+      body: BlocBuilder<NavCubit, NavState>(
+        builder: (context, state) {
+          return _views[state.currentIndex];
+        },
+      ),
+      bottomNavigationBar: const CoreBottomNav(),
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\views\month_detail_view.dart
+-----------------------
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubits/roadmap_cubit.dart';
+import '../cubits/navigation/nav_cubit.dart';
+import '../models/roadmap_model.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  The high-density 30-day grid for a specific   |
+|  month.                                        |
+\*----------------------------------------------*/
+class MonthDetailView extends StatelessWidget {
+  const MonthDetailView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<NavCubit, NavState>(
+      builder: (context, navState) {
+        final monthIndex = navState.extraData as int? ?? 1;
+
+        return BlocBuilder<RoadmapCubit, RoadmapData>(
+          builder: (context, roadmapState) {
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  /*----------------------------------------------*\
+                  |  Breadcrumb / Header                           |
+                  \*----------------------------------------------*/
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios, size: 16),
+                        onPressed: () => context.read<NavCubit>().changeView(1),
+                        tooltip: 'Back to Roadmap',
+                      ),
+                      Text(
+                        'MONTH ${monthIndex.toString().padLeft(2, '0')} || DETAILED GRID',
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).primaryColor,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  /*----------------------------------------------*\
+                  |  30-Day Grid                                   |
+                  \*----------------------------------------------*/
+                  Expanded(
+                    child: GridView.builder(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 5,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                      ),
+                      itemCount: 30,
+                      itemBuilder: (context, index) {
+                        final dayIndex = index + 1;
+                        final tokenId = 'm$monthIndex-d$dayIndex';
+                        final isBurned = roadmapState.burnedTokens.contains(tokenId);
+
+                        return _DayBox(
+                          dayIndex: dayIndex,
+                          isBurned: isBurned,
+                          onTap: () {
+                            context.read<RoadmapCubit>().toggleToken(tokenId);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _DayBox extends StatefulWidget {
+  final int dayIndex;
+  final bool isBurned;
+  final VoidCallback onTap;
+
+  const _DayBox({
+    required this.dayIndex,
+    required this.isBurned,
+    required this.onTap,
+  });
+
+  @override
+  State<_DayBox> createState() => _DayBoxState();
+}
+
+class _DayBoxState extends State<_DayBox> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    _controller.forward(from: 0).then((_) => _controller.reverse());
+    widget.onTap();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        /*----------------------------------------------*\
+        |  Simple shake/shock effect logic               |
+        \*----------------------------------------------*/
+        final dx = (0.5 - _controller.value).abs() * 10 * (widget.isBurned ? -1 : 1);
+        
+        return Transform.translate(
+          offset: Offset(dx, 0),
+          child: child,
+        );
+      },
+      child: InkWell(
+        onTap: _handleTap,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: widget.isBurned ? primary : Colors.grey.withOpacity(0.3),
+              width: widget.isBurned ? 2 : 1,
+            ),
+            color: widget.isBurned 
+                ? primary.withOpacity(0.2) 
+                : Colors.transparent,
+          ),
+          child: Center(
+            child: Text(
+              widget.dayIndex.toString(),
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: widget.isBurned ? primary : Colors.grey,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\views\motivation_view.dart
+-----------------------
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubits/roadmap_cubit.dart';
+import '../models/roadmap_model.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  The psychological core of the app. Calculates |
+|  the Delta between real time and token burn.   |
+\*----------------------------------------------*/
+class MotivationView extends StatelessWidget {
+  const MotivationView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<RoadmapCubit, RoadmapData>(
+      builder: (context, state) {
+        final math = _calculateDelta(state);
+        
+        final delta = math['delta'] ?? 0.0;
+        final paceCar = math['paceCar'] ?? 0.0;
+        final daysLeft = math['daysLeft'] ?? 0.0;
+        final totalCalendarDays = math['totalCalendarDays'] ?? 1.0;
+
+        final primary = Theme.of(context).primaryColor;
+        final isAhead = delta >= 0.0;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              /*----------------------------------------------*\
+              |  Hacker Header                                 |
+              \*----------------------------------------------*/
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'MOTIVATION || ANALYTICS',
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: primary,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Container(height: 1, color: Colors.grey.withOpacity(0.2)),
+              const SizedBox(height: 40),
+
+              /*----------------------------------------------*\
+              |  Quote Section                                 |
+              \*----------------------------------------------*/
+              const Icon(Icons.format_quote, size: 40, color: Colors.grey),
+              const SizedBox(height: 10),
+              const Text(
+                '"Don\'t count the days,\nmake the days count."',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'â€” Muhammad Ali',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+
+              const SizedBox(height: 50),
+
+              /*----------------------------------------------*\
+              |  The Delta Display                             |
+              \*----------------------------------------------*/
+              Text(
+                'THE DELTA',
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  letterSpacing: 4,
+                  fontSize: 14,
+                  color: Colors.grey.withOpacity(0.8),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                (isAhead ? '+' : '') + delta.toStringAsFixed(1),
+                style: TextStyle(
+                  fontSize: 80,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                  color: isAhead ? primary : Colors.redAccent,
+                  shadows: [
+                    Shadow(
+                      blurRadius: 20,
+                      color: (isAhead ? primary : Colors.redAccent).withOpacity(0.3),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 50),
+
+              /*----------------------------------------------*\
+              |  Stats Grid                                    |
+              \*----------------------------------------------*/
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                childAspectRatio: 2.5,
+                children: [
+                  _StatItem(label: 'TOKENS BURNED', value: state.burnedTokens.length.toString()),
+                  _StatItem(label: 'PACE CAR', value: paceCar.toStringAsFixed(1)),
+                  _StatItem(label: 'DAYS REMAINING', value: daysLeft.toInt().toString()),
+                  _StatItem(label: 'TARGET DATE', value: '2028-01-01'),
+                ],
+              ),
+
+              const SizedBox(height: 30),
+              Text(
+                'Ratio: 360d work / ${totalCalendarDays.toInt()}d total',
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: Colors.grey),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Map<String, double> _calculateDelta(RoadmapData state) {
+    if (state.startDate == null) {
+      return {'delta': 0.0, 'paceCar': 0.0, 'daysLeft': 0.0, 'totalCalendarDays': 1.0};
+    }
+
+    final now = DateTime.now();
+    final start = DateTime.parse(state.startDate!);
+    final target = DateTime(2028, 1, 1);
+    
+    final totalCalendarDays = target.difference(start).inDays.toDouble();
+    if (totalCalendarDays <= 0) return {'delta': 0.0, 'paceCar': 0.0, 'daysLeft': 0.0, 'totalCalendarDays': 1.0};
+
+    final dynamicRatio = 360 / totalCalendarDays;
+    final daysPassed = now.difference(start).inDays.toDouble();
+    final daysLeft = target.difference(now).inDays.toDouble();
+
+    final paceCar = daysPassed * dynamicRatio;
+    final burnedCount = state.burnedTokens.length.toDouble();
+    final delta = burnedCount - paceCar;
+
+    return {
+      'delta': delta,
+      'paceCar': paceCar,
+      'daysLeft': daysLeft,
+      'totalCalendarDays': totalCalendarDays,
+    };
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _StatItem({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: Colors.grey, fontFamily: 'monospace'),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+        ),
+      ],
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\views\roadmap_view.dart
+-----------------------
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubits/roadmap_cubit.dart';
+import '../models/roadmap_model.dart';
+import '../cubits/navigation/nav_cubit.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  Displays the 12-month overview of the system. |
+|  FIXED: Increased grid density for better fit. |
+\*----------------------------------------------*/
+class RoadmapView extends StatelessWidget {
+  const RoadmapView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<RoadmapCubit, RoadmapData>(
+      builder: (context, state) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              /*----------------------------------------------*\
+              |  Hacker Header                                 |
+              \*----------------------------------------------*/
+              Text(
+                'SYSTEM ROADMAP || 360 DAYS',
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).primaryColor,
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Container(
+                height: 2,
+                width: double.infinity,
+                color: Theme.of(context).dividerColor,
+              ),
+              const SizedBox(height: 20),
+
+              /*----------------------------------------------*\
+              |  The 12-Month Grid                             |
+              |  Switched to 3 columns for desktop/wide.       |
+              \*----------------------------------------------*/
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3, // Increased from 2 to 3 for better density
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 1.0,
+                  ),
+                  itemCount: 12,
+                  itemBuilder: (context, index) {
+                    final monthIndex = index + 1;
+                    final monthTokens = state.burnedTokens
+                        .where((t) => t.startsWith('m$monthIndex-'))
+                        .length;
+                    
+                    final progress = monthTokens / 30;
+
+                    return _MonthCard(
+                      monthIndex: monthIndex,
+                      burned: monthTokens,
+                      progress: progress,
+                      onTap: () {
+                        context.read<NavCubit>().changeView(9, extraData: monthIndex);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _MonthCard extends StatelessWidget {
+  final int monthIndex;
+  final int burned;
+  final double progress;
+  final VoidCallback onTap;
+
+  const _MonthCard({
+    required this.monthIndex,
+    required this.burned,
+    required this.progress,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+          color: Theme.of(context).cardColor.withValues(alpha: 0.1),
+        ),
+        padding: const EdgeInsets.all(8), // Reduced padding
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'M${monthIndex.toString().padLeft(2, '0')}',
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 14, // Smaller font
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Icon(Icons.terminal, size: 12, color: primary),
+              ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$burned/30',
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 10, // Smaller font
+                    color: burned > 0 ? primary : Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.grey.withValues(alpha: 0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(primary),
+                    minHeight: 2, // Thinner bar
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\views\settings_view.dart
+-----------------------
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubits/roadmap_cubit.dart';
+import '../cubits/theme/theme_cubit.dart';
+import '../models/roadmap_model.dart';
+
+class SettingsView extends StatelessWidget {
+  const SettingsView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('SYSTEM SETTINGS', style: TextStyle(fontSize: 24, letterSpacing: 2, color: Colors.grey)),
+          const Divider(color: Colors.grey),
+          const SizedBox(height: 20),
+
+          /*----------------------------------------------*\
+          |  <Sla7ef (2Z2H1G)>                             |
+          |  THEME OVERRIDE                                |
+          \*----------------------------------------------*/
+          ListTile(
+            title: const Text('CYCLE THEME', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
+            trailing: Icon(Icons.palette, color: Theme.of(context).primaryColor),
+            tileColor: Colors.black.withOpacity(0.2),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+            ),
+            /*----------------------------------------------*\
+            |  Triggers the global theme rebuild             |
+            \*----------------------------------------------*/
+            onTap: () => context.read<ThemeCubit>().cycleTheme(),
+          ),
+
+          const SizedBox(height: 20),
+
+          /*----------------------------------------------*\
+          |  <Sla7ef (2Z2H1G)>                             |
+          |  ROADMAP INITIALIZATION                        |
+          \*----------------------------------------------*/
+          BlocBuilder<RoadmapCubit, RoadmapData>(
+            builder: (context, roadmap) {
+              final hasDate = roadmap.startDate != null;
+              final displayDate = hasDate ? roadmap.startDate!.split('T')[0] : 'NOT SET';
+
+              return ListTile(
+                title: const Text('SET START DATE', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
+                subtitle: Text('Current: $displayDate', style: TextStyle(color: Theme.of(context).primaryColor, fontFamily: 'monospace')),
+                trailing: Icon(Icons.calendar_today, color: Theme.of(context).primaryColor),
+                tileColor: Colors.black.withOpacity(0.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+                ),
+                onTap: () async {
+                  /*----------------------------------------------*\
+                  |  Halts execution until user picks a date       |
+                  \*----------------------------------------------*/
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2024),
+                    lastDate: DateTime(2028),
+                    builder: (context, child) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: ColorScheme.dark(
+                            primary: Theme.of(context).primaryColor,
+                            onPrimary: Colors.black,
+                            surface: Theme.of(context).scaffoldBackgroundColor,
+                            onSurface: Colors.white,
+                          ),
+                        ),
+                        child: child!,
+                      );
+                    },
+                  );
+
+                  if (picked != null) {
+                    /*----------------------------------------------*\
+                    |  Fires event to Cubit, saves to flash mem      |
+                    \*----------------------------------------------*/
+                    context.read<RoadmapCubit>().setStartDate(picked);
+                  }
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\views\todo_view.dart
+-----------------------
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubits/todo/todo_cubit.dart';
+import '../cubits/todo/todo_state.dart';
+
+class TodoView extends StatelessWidget {
+  TodoView({super.key});
+
+  /*----------------------------------------------*\
+  |  Controller to read the text input             |
+  \*----------------------------------------------*/
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        /*----------------------------------------------*\
+        |  INPUT ROW                                     |
+        \*----------------------------------------------*/
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  style: const TextStyle(fontFamily: 'monospace'),
+                  decoration: InputDecoration(
+                    hintText: 'NEW TASK...',
+                    border: const OutlineInputBorder(),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Theme.of(context).primaryColor),
+                    ),
+                  ),
+                  onSubmitted: (val) {
+                    context.read<TodoCubit>().addTodo(val);
+                    _controller.clear();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+                ),
+                onPressed: () {
+                  context.read<TodoCubit>().addTodo(_controller.text);
+                  _controller.clear();
+                },
+                child: const Text('ADD', style: TextStyle(fontWeight: FontWeight.bold)),
+              )
+            ],
+          ),
+        ),
+
+        /*----------------------------------------------*\
+        |  TODO LIST                                     |
+        \*----------------------------------------------*/
+        Expanded(
+          /*----------------------------------------------*\
+          |  BlocBuilder listens to the engine and         |
+          |  repaints ONLY this list when data changes     |
+          \*----------------------------------------------*/
+          child: BlocBuilder<TodoCubit, TodoState>(
+            builder: (context, state) {
+              if (state.isLoading) return const Center(child: CircularProgressIndicator());
+              if (state.todos.isEmpty) return const Center(child: Text('TODO DB EMPTY', style: TextStyle(color: Colors.grey, letterSpacing: 2)));
+
+              return ListView.builder(
+                itemCount: state.todos.length,
+                itemBuilder: (context, index) {
+                  final todo = state.todos[index];
+                  return ListTile(
+                    leading: Checkbox(
+                      value: todo.isDone,
+                      activeColor: Theme.of(context).primaryColor,
+                      onChanged: (_) => context.read<TodoCubit>().toggleTodo(todo.id),
+                    ),
+                    title: Text(
+                      todo.text,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        decoration: todo.isDone ? TextDecoration.lineThrough : null,
+                        color: todo.isDone ? Colors.grey : Colors.white,
+                      ),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.redAccent),
+                      onPressed: () => context.read<TodoCubit>().removeTodo(todo.id),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        )
+      ],
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\widgets\core_bottom_nav.dart
+-----------------------
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubits/navigation/nav_cubit.dart';
+
+/*----------------------------------------------*\
+|  The main 4-tab bar at the bottom of the       |
+|  screen.                                       |
+\*----------------------------------------------*/
+class CoreBottomNav extends StatelessWidget {
+  const CoreBottomNav({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    /*----------------------------------------------*\
+    |  Listens to the current index to highlight     |
+    |  the active tab.                               |
+    \*----------------------------------------------*/
+    return BlocBuilder<NavCubit, NavState>(
+      builder: (context, state) {
+        final currentIndex = state.currentIndex;
+        /*----------------------------------------------*\
+        |  Hide the bottom nav entirely if we are on a   |
+        |  Drawer page (index > 3) or special view.      |
+        \*----------------------------------------------*/
+        if (currentIndex > 3) return const SizedBox.shrink();
+
+        return BottomNavigationBar(
+          currentIndex: currentIndex,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          selectedItemColor: Theme.of(context).primaryColor,
+          unselectedItemColor: Colors.grey,
+          /*----------------------------------------------*\
+          |  Triggers the cubit to swap the view without   |
+          |  using setState.                               |
+          \*----------------------------------------------*/
+          onTap: (index) => context.read<NavCubit>().changeView(index),
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Core'),
+            BottomNavigationBarItem(icon: Icon(Icons.calendar_view_month), label: 'Roadmap'),
+            BottomNavigationBarItem(icon: Icon(Icons.timer), label: 'Chrono'),
+            BottomNavigationBarItem(icon: Icon(Icons.checklist), label: 'Todo DB'),
+          ],
+        );
+      },
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\widgets\core_drawer.dart
+-----------------------
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubits/navigation/nav_cubit.dart';
+
+/*----------------------------------------------*\
+|  The hamburger menu holding pages 5 through    |
+|  10.                                           |
+\*----------------------------------------------*/
+class CoreDrawer extends StatelessWidget {
+  const CoreDrawer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Theme.of(context).primaryColor))),
+            child: Text('SYSTEM MENU', style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 24)),
+          ),
+          _drawerItem(context, 'Audio Engine', 4, Icons.speaker),
+          _drawerItem(context, 'Launchpad', 5, Icons.rocket_launch),
+          _drawerItem(context, 'Motivation', 6, Icons.format_quote),
+          _drawerItem(context, 'Data Ops', 7, Icons.save),
+          _drawerItem(context, 'Settings', 8, Icons.settings),
+        ],
+      ),
+    );
+  }
+
+  /*----------------------------------------------*\
+  |  A helper method to avoid copying and pasting  |
+  |  the ListTile code 5 times.                    |
+  \*----------------------------------------------*/
+  Widget _drawerItem(BuildContext context, String title, int targetIndex, IconData icon) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.grey),
+      title: Text(title),
+      onTap: () {
+        context.read<NavCubit>().changeView(targetIndex);
+        /*----------------------------------------------*\
+        |  Force the drawer to slide closed immediately  |
+        |  after a selection is made.                    |
+        \*----------------------------------------------*/
+        Navigator.pop(context);
+      },
+    );
+  }
+}
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\widgets\delta_display.dart
+-----------------------
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\widgets\todo_tile.dart
+-----------------------
+
+
+FILE: C:\Users\Booma\AndroidStudioProjects\MyApplication\team_app\lib\main.dart
+-----------------------
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'services/storage_service.dart';
+import 'cubits/theme/theme_cubit.dart';
+import 'cubits/navigation/nav_cubit.dart';
+import 'cubits/todo/todo_cubit.dart';
+import 'cubits/chrono/chrono_cubit.dart';
+import 'cubits/roadmap_cubit.dart';
+import 'cubits/audio_cubit.dart';
+import 'views/main_layout.dart';
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  The async main function allows us to read     |
+|  from the disk before the UI boots.            |
+\*----------------------------------------------*/
+void main() async {
+  /*----------------------------------------------*\
+  |  Required by Flutter when executing native     |
+  |  code (like shared_prefs) before runApp.       |
+  \*----------------------------------------------*/
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final storage = StorageService();
+  await storage.init();
+
+  runApp(JadeCoreApp(storage: storage));
+}
+
+/*----------------------------------------------*\
+|  <Sla7ef (2Z2H1G)>                             |
+|  Injects all state engines at the highest      |
+|  level so any widget can access them.          |
+\*----------------------------------------------*/
+class JadeCoreApp extends StatelessWidget {
+  final StorageService storage;
+
+  const JadeCoreApp({super.key, required this.storage});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => ThemeCubit(storage)),
+        BlocProvider(create: (_) => NavCubit()),
+        BlocProvider(create: (_) => TodoCubit(storage)),
+        BlocProvider(create: (_) => ChronoCubit()),
+        BlocProvider(create: (_) => RoadmapCubit(storage)),
+        BlocProvider(create: (_) => AudioCubit()),
+      ],
+      /*----------------------------------------------*\
+      |  BlocBuilder listens to ThemeCubit to repaint  |
+      |  the entire app when cycled.                   |
+      \*----------------------------------------------*/
+      child: BlocBuilder<ThemeCubit, String>(
+        builder: (context, themeName) {
+          return MaterialApp(
+            title: 'JADE || CORE',
+            theme: _getTheme(themeName),
+            home: MainLayout(),
+            /*----------------------------------------------*\
+            |  Hides the debug banner.                       |
+            \*----------------------------------------------*/
+            debugShowCheckedModeBanner: false,
+          );
+        },
+      ),
+    );
+  }
+
+  /*----------------------------------------------*\
+  |  A custom mapper to turn string states         |
+  |  into actual Flutter ThemeData.                |
+  \*----------------------------------------------*/
+  ThemeData _getTheme(String themeName) {
+    if (themeName == 'light') return ThemeData.light();
+    if (themeName == 'cyber') {
+      return ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF0A0A2A),
+        primaryColor: const Color(0xFFFF00FF),
+        colorScheme: const ColorScheme.dark(primary: Color(0xFFFF00FF)),
+      );
+    }
+    /*----------------------------------------------*\
+    |  Default Dark Theme                            |
+    \*----------------------------------------------*/
+    return ThemeData.dark().copyWith(
+      scaffoldBackgroundColor: const Color(0xFF0F0F0F),
+      primaryColor: const Color(0xFF00FF41),
+      colorScheme: const ColorScheme.dark(primary: Color(0xFF00FF41)),
+    );
+  }
+}
