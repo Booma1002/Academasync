@@ -1,17 +1,17 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:file_selector/file_selector.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/storage_service.dart';
 import '../cubits/roadmap_cubit.dart';
 import '../cubits/todo/todo_cubit.dart';
 
 /*----------------------------------------------*\
 |  <Sla7ef (2Z2H1G)>                             |
-|  FIXED: Switching to official file_selector    |
-|  to fix Windows Explorer crashes.              |
+|  The data maintenance panel for JADE || CORE.  |
+|  FIXED: Android-safe export using Share Sheet. |
 \*----------------------------------------------*/
 class DataOpsView extends StatelessWidget {
   const DataOpsView({super.key});
@@ -21,24 +21,22 @@ class DataOpsView extends StatelessWidget {
       final storage = StorageService();
       final jsonString = storage.exportFullState();
       
-      // Define location and name suggestions
-      const String fileName = 'jade_backup.json';
-      final FileSaveLocation? result = await getSaveLocation(
-        suggestedName: fileName,
-        acceptedTypeGroups: [
-          const XTypeGroup(label: 'JSON', extensions: ['json']),
-        ],
-      );
-
-      if (result == null) return; // User cancelled
-
-      // Manual write using dart:io for maximum stability
-      final File file = File(result.path);
+      // 1. Get the safe internal sandbox directory (Android/iOS safe)
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/jade_backup.json');
+      
+      // 2. Write the JSON to the sandbox
       await file.writeAsString(jsonString);
 
+      // 3. Trigger the native Share Sheet to extract it
       if (context.mounted) {
+        await Share.shareXFiles(
+          [XFile(file.path, mimeType: 'application/json')], 
+          text: 'JADE || CORE Backup JSON'
+        );
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('BACKUP SAVED TO DISK')),
+          const SnackBar(content: Text('BACKUP READY FOR EXPORT')),
         );
       }
     } catch (e) {
@@ -60,7 +58,6 @@ class DataOpsView extends StatelessWidget {
         final file = File(result.files.single.path!);
         final content = await file.readAsString();
         
-        // Flexible import call
         await StorageService().importFullState(content);
         
         if (context.mounted) {
@@ -74,11 +71,9 @@ class DataOpsView extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        // Show actual error details to help debug the JSON structure
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('RESTORE FAILED: $e')),
         );
-        debugPrint('Import Error: $e');
       }
     }
   }
@@ -107,9 +102,9 @@ class DataOpsView extends StatelessWidget {
           const SizedBox(height: 40),
 
           _OpsCard(
-            title: 'SAVE TO DISK',
-            description: 'Export all state to a backup file.',
-            icon: Icons.save_alt,
+            title: 'BACKUP DATA',
+            description: 'Save your progress via the system share sheet.',
+            icon: Icons.share,
             color: primary,
             onTap: () => _exportData(context),
           ),
